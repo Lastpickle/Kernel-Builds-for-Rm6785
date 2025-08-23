@@ -700,6 +700,20 @@ jobs:
          echo "Checking OPPO Phoenix directory contents:"
          ls -la drivers/soc/oppo/oppo_phoenix/ || true
          find drivers/soc/oppo/oppo_phoenix/ -name "*.h" -type f || true
+
+      - name: Fix mtk_gauge_time_service.h Include Path
+        run: |
+         cd $GITHUB_WORKSPACE/device_kernel/
+         
+         # Patch all references to the wrong "kernel-4.9/..." path
+         grep -rl 'kernel-4.9/drivers/power/supply/mediatek/misc/mtk_gauge_time_service.h' \
+         drivers/power/supply/oppo | while read -r file; do
+         echo "Fixing include path in $file"
+         sed -i 's|../../../../kernel-4.9/drivers/power/supply/mediatek/misc/mtk_gauge_time_service.h|../drivers/power/supply/mediatek/misc/mtk_gauge_time_service.h|g' "$file"
+         done
+         
+         # Confirm the header exists
+         ls -l drivers/power/supply/mediatek/misc/mtk_gauge_time_service.h   
     
       - name: Build Kernel
         run: |
