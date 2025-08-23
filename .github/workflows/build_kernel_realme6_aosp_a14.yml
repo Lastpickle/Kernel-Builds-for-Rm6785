@@ -686,12 +686,20 @@ jobs:
          # Also create a dummy target in Makefile
          echo "scripts/dtc/dtc: ; @echo 'Using system DTC'" >> scripts/Makefile.host
 
-      - name: Fix OPPO Phoenix Include Path
+      - name: Fix All OPPO Phoenix Include Paths
         run: |
          cd $GITHUB_WORKSPACE/device_kernel/
          
-         # Fix the incorrect include path in init/main.c
-         sed -i 's|#include "../../vendor/oppo/oppo_phoenix/kernel/oppo_phoenix/oppo_phoenix.h"|#include "../drivers/soc/oppo/oppo_phoenix/oppo_phoenix.h"|' init/main.c
+         # Find all files with the wrong OPPO Phoenix include path and fix them
+         grep -r "../../vendor/oppo/oppo_phoenix/kernel/oppo_phoenix/oppo_phoenix.h" . --include="*.c" --include="*.h" | cut -d: -f1 | sort -u | while read file; do
+         echo "Fixing include path in $file"
+         sed -i 's|../../vendor/oppo/oppo_phoenix/kernel/oppo_phoenix/oppo_phoenix.h|../drivers/soc/oppo/oppo_phoenix/oppo_phoenix.h|g' "$file"
+         done
+         
+         # Double check what header file actually exists
+         echo "Checking OPPO Phoenix directory contents:"
+         ls -la drivers/soc/oppo/oppo_phoenix/ || true
+         find drivers/soc/oppo/oppo_phoenix/ -name "*.h" -type f || true
     
       - name: Build Kernel
         run: |
