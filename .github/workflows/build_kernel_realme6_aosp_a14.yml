@@ -673,15 +673,21 @@ jobs:
           key: build-kernel-${{ env.DEVICE_NAME }}${{ env.UPLOADNAME }}
           max-size: 2G
 
-      - name: Fix DTC Build Issues
+      - name: Use System DTC Instead
         run: |
+         sudo apt-get update && sudo apt-get install -y device-tree-compiler
          cd $GITHUB_WORKSPACE/device_kernel/
-         export HOSTCFLAGS="-fcommon"
-         echo "HOSTCFLAGS=-fcommon" >> ~/.bashrc
+         # Replace the kernel's DTC build with system DTC
+         mkdir -p scripts/dtc/
+         echo '#!/bin/bash' > scripts/dtc/dtc
+         echo 'exec /usr/bin/dtc "$@"' >> scripts/dtc/dtc
+         chmod +x scripts/dtc/dtc
+    
+         # Also create a dummy target in Makefile
+         echo "scripts/dtc/dtc: ; @echo 'Using system DTC'" >> scripts/Makefile.host
 
       - name: Build Kernel
         run: |
-          export HOSTCFLAGS="-fcommon"
           MERGE_CONFIG_FILES=("vendor/debugfs.config" "vendor/lahaina_QGKI.config")
           export PATH=$GITHUB_WORKSPACE/clang-custom/bin:$PATH
           cd $GITHUB_WORKSPACE/device_kernel/
