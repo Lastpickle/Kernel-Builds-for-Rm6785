@@ -1,4 +1,4 @@
-name: Build Kernel Realme 6 (All A14) with KSU
+name: Build Kernel Realme 6 (rui1 b65 only) with KSU
 on:
   workflow_call:
   workflow_dispatch:
@@ -686,6 +686,13 @@ jobs:
          # Also create a dummy target in Makefile
          echo "scripts/dtc/dtc: ; @echo 'Using system DTC'" >> scripts/Makefile.host
 
+      - name: Fix OPPO Phoenix Include Path
+        run: |
+         cd $GITHUB_WORKSPACE/device_kernel/
+         
+         # Fix the incorrect include path in init/main.c
+         sed -i 's|#include "../../vendor/oppo/oppo_phoenix/kernel/oppo_phoenix/oppo_phoenix.h"|#include "../drivers/soc/oppo/oppo_phoenix/oppo_phoenix.h"|' init/main.c
+    
       - name: Build Kernel
         run: |
           MERGE_CONFIG_FILES=("vendor/debugfs.config" "vendor/lahaina_QGKI.config")
