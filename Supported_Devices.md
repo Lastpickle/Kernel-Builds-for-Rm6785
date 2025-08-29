@@ -60,6 +60,7 @@
   - 小米 11 Ultra 没有进行normal patch，仅仅执行backport patch，因此应该可以在KSU管理器中切换kprobe和模拟手动修补，以及SUS SU应该也能正常工作
   - 小米平板 4(Plus) 基于SukiSU Ultra的KPM功能**未经完整测试**（会显示在管理器中，但未刷入内核模块进行测试）
   - 小米 Mix2s 已移植Cgroup V2，但Cgroup Freezer需要依赖系统额外步骤才能使用且该功能实际执行冻结过程异常，建议使用Cgroup UID
+  - 小米 Mix2s 已使用 Tracepoint Hook
   - 红米 K40 Gaming 内核与 Poco F3 GT 通用
   - 红米 8 内核与 红米 8a 通用；理论上LineageOS系的系统，只要是4.19内核都通用 (无论是安卓几)
   - 红米 Note 10 Pro 内核与 Poco X3 GT 通用
