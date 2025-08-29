@@ -1,4 +1,4 @@
-name: Build Kernel Realme 6 (rui1 b65 only) with KSU
+name: Build Kernel Realme 6 (All A14) with KSU
 on:
   workflow_call:
   workflow_dispatch:
@@ -673,48 +673,6 @@ jobs:
           key: build-kernel-${{ env.DEVICE_NAME }}${{ env.UPLOADNAME }}
           max-size: 2G
 
-      - name: Use System DTC Instead
-        run: |
-         sudo apt-get update && sudo apt-get install -y device-tree-compiler
-         cd $GITHUB_WORKSPACE/device_kernel/
-         # Replace the kernel's DTC build with system DTC
-         mkdir -p scripts/dtc/
-         echo '#!/bin/bash' > scripts/dtc/dtc
-         echo 'exec /usr/bin/dtc "$@"' >> scripts/dtc/dtc
-         chmod +x scripts/dtc/dtc
-    
-         # Also create a dummy target in Makefile
-         echo "scripts/dtc/dtc: ; @echo 'Using system DTC'" >> scripts/Makefile.host
-
-      - name: Fix All OPPO Phoenix Include Paths
-        run: |
-         cd $GITHUB_WORKSPACE/device_kernel/
-         
-         # Find all files with the wrong OPPO Phoenix include path and fix them
-         grep -r "../../vendor/oppo/oppo_phoenix/kernel/oppo_phoenix/oppo_phoenix.h" . --include="*.c" --include="*.h" | cut -d: -f1 | sort -u | while read file; do
-         echo "Fixing include path in $file"
-         sed -i 's|../../vendor/oppo/oppo_phoenix/kernel/oppo_phoenix/oppo_phoenix.h|../drivers/soc/oppo/oppo_phoenix/oppo_phoenix.h|g' "$file"
-         done
-         
-         # Double check what header file actually exists
-         echo "Checking OPPO Phoenix directory contents:"
-         ls -la drivers/soc/oppo/oppo_phoenix/ || true
-         find drivers/soc/oppo/oppo_phoenix/ -name "*.h" -type f || true
-
-      - name: Fix mtk_gauge_time_service.h Include Path
-        run: |
-         cd $GITHUB_WORKSPACE/device_kernel/
-         
-         # Patch all references to the wrong "kernel-4.9/..." path
-         grep -rl 'kernel-4.9/drivers/power/supply/mediatek/misc/mtk_gauge_time_service.h' \
-         drivers/power/supply/oppo | while read -r file; do
-         echo "Fixing include path in $file"
-         sed -i 's|../../../../kernel-4.9/drivers/power/supply/mediatek/misc/mtk_gauge_time_service.h|../drivers/power/supply/mediatek/misc/mtk_gauge_time_service.h|g' "$file"
-         done
-         
-         # Confirm the header exists
-         ls -l drivers/power/supply/mediatek/misc/mtk_gauge_time_service.h   
-    
       - name: Build Kernel
         run: |
           MERGE_CONFIG_FILES=("vendor/debugfs.config" "vendor/lahaina_QGKI.config")
