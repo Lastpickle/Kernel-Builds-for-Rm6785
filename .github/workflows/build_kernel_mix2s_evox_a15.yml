@@ -175,6 +175,7 @@ jobs:
             # echo "CONFIG_KSU_MANUAL_HOOK=y" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
             echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
           fi
+          echo "CONFIG_KSU_MANUAL_SU=n" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
           if [[ ${{ env.SUSFS_ENABLE }} == "true" ]]; then
             echo "CONFIG_KSU_SUSFS=y" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
             echo "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y" >> ./arch/arm64/configs/${{ env.DEFCONFIG_NAME }}
@@ -282,6 +283,72 @@ jobs:
           git clone https://github.com/JackA1ltman/NonGKI_Kernel_Patches.git -b mi_kernel NonGKI_Kernel_Patches --depth=1
           cp susfs4ksu/kernel_patches/fs/* fs/
           cp susfs4ksu/kernel_patches/include/linux/* include/linux/
+
+      - name: Patch Kernel of SUSFS
+        if: env.SUSFS_ENABLE == 'true'
+        run: |
+          cd $GITHUB_WORKSPACE/device_kernel/
+          cp susfs4ksu/kernel_patches/50_add_susfs_in_kernel-${{ env.KERNEL_VERSION }}.patch ./
+
+          patch -p1 < 50_add_susfs_in_kernel-${{ env.KERNEL_VERSION }}.patch || true
+
+          if [[ "${{ env.KERNELSU_NAME }}"  == "KernelSU-Next" ]]; then
+            if [[ "${{ env.KERNELSU_SOURCE }}" =~ ".sh" && "${{ env.KERNELSU_BRANCH }}" =~ "susfs" ]]; then
+                echo "KernelSU-Next SuSFS Branch detected!"
+            elif [[ "${{ env.KERNELSU_SOURCE }}" =~ ".sh" ]]; then
+                git clone ${{ env.KERNELSU_SOURCE }} -b ${{ env.KERNELSU_BRANCH }}-susfs susfs_fixed
+                rsync -av --exclude='.git' susfs_fixed/kernel/ KernelSU-Next/kernel/
+            fi
+          elif [[ "${{ env.KERNELSU_SUS_PATCH }}" == "true" ]]; then
+            cp susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./${{ env.KERNELSU_NAME }}
+            cd ${{ env.KERNELSU_NAME }}
+            patch -p1 < 10_enable_susfs_for_ksu.patch || true
+          fi
+
+      - name: Fixed Kernel Patch
+        if: env.SUSFS_ENABLE == 'true' && env.SUSFS_FIXED == 'true'
+        run: |
+          cd $GITHUB_WORKSPACE/device_kernel/
+          cp NonGKI_Kernel_Patches/mix2s_evox_a15/susfs_155_fixed.patch ./
+          cp NonGKI_Kernel_Patches/mix2s_evox_a15/wireguard_fixed.patch ./
+
+          patch -p1 < susfs_155_fixed.patch|| true
+          patch -p1 < wireguard_fixed.patch || true
+
+      - name: Updated SUSFS Version
+        if: env.SUSFS_UPDATE == 'true'
+        run: |
+          cd $GITHUB_WORKSPACE/device_kernel/
+
+          # Upgrade 1.5.7
+          cp /tmp/Patches/Patch/susfs_upgrade_to_157.patch ./
+
+          patch -p1 < susfs_upgrade_to_157.patch || true
+
+          # Upgrade 1.5.8
+          cp /tmp/Patches/Patch/susfs_upgrade_to_158_${{ env.KERNEL_VERSION }}.patch ./
+          patch -p1 < susfs_upgrade_to_158_${{ env.KERNEL_VERSION }}.patch || true
+          echo "Detected no-kprobe hook, use no-kprobe patch."
+
+          # Upgrade 1.5.9
+          cp /tmp/Patches/Patch/susfs_upgrade_to_159.patch ./
+
+          patch -p1 < susfs_upgrade_to_159.patch || true
+
+          # Upgrade 1.5.10
+          cp /tmp/Patches/Patch/susfs_upgrade_to_1510_${{ env.KERNEL_VERSION }}.patch ./
+          patch -p1 < susfs_upgrade_to_1510_${{ env.KERNEL_VERSION }}.patch || true
+          echo "Detected no-kprobe hook, use no-kprobe patch to update 1.5.10."
+
+          # Upgrade 1.5.11
+          cp /tmp/Patches/Patch/susfs_upgrade_to_1511_${{ env.KERNEL_VERSION }}.patch ./
+          patch -p1 < susfs_upgrade_to_1511_${{ env.KERNEL_VERSION }}.patch || true
+          echo "Detected no-kprobe hook, use no-kprobe patch to update 1.5.11."
+
+          # Extra SUSFS Patch
+          # cp NonGKI_Kernel_Patches/[patch_folder]/[patch_file].patch ./
+
+          # patch -p1 < [patch_file].patch || true
 
       - name: Patch Kernel for no-kprobe
         run: |
@@ -462,27 +529,6 @@ jobs:
 
           echo "LXC_ENABLE=lxc" >> $GITHUB_ENV
 
-      - name: Patch Kernel of SUSFS
-        if: env.SUSFS_ENABLE == 'true'
-        run: |
-          cd $GITHUB_WORKSPACE/device_kernel/
-          cp susfs4ksu/kernel_patches/50_add_susfs_in_kernel-${{ env.KERNEL_VERSION }}.patch ./
-
-          patch -p1 < 50_add_susfs_in_kernel-${{ env.KERNEL_VERSION }}.patch || true
-
-          if [[ "${{ env.KERNELSU_NAME }}"  == "KernelSU-Next" ]]; then
-            if [[ "${{ env.KERNELSU_SOURCE }}" =~ ".sh" && "${{ env.KERNELSU_BRANCH }}" =~ "susfs" ]]; then
-                echo "KernelSU-Next SuSFS Branch detected!"
-            elif [[ "${{ env.KERNELSU_SOURCE }}" =~ ".sh" ]]; then
-                git clone ${{ env.KERNELSU_SOURCE }} -b ${{ env.KERNELSU_BRANCH }}-susfs susfs_fixed
-                rsync -av --exclude='.git' susfs_fixed/kernel/ KernelSU-Next/kernel/
-            fi
-          elif [[ "${{ env.KERNELSU_SUS_PATCH }}" == "true" ]]; then
-            cp susfs4ksu/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch ./${{ env.KERNELSU_NAME }}
-            cd ${{ env.KERNELSU_NAME }}
-            patch -p1 < 10_enable_susfs_for_ksu.patch || true
-          fi
-
       - name: Patch Kernel of Re:Kernel
         if: env.REKERNEL_ENABLE == 'true'
         run: |
@@ -497,69 +543,9 @@ jobs:
             echo "Your kernel not supported it."
           fi
 
-      - name: Fixed Kernel Patch
-        if: env.SUSFS_ENABLE == 'true' && env.SUSFS_FIXED == 'true'
-        run: |
-          cd $GITHUB_WORKSPACE/device_kernel/
-          cp NonGKI_Kernel_Patches/mix2s_evox_a15/cmdline_fixed.patch ./
-          cp NonGKI_Kernel_Patches/mix2s_evox_a15/task_mmu_fixed.patch ./
-          cp NonGKI_Kernel_Patches/mix2s_evox_a15/fdinfo_fixed.patch ./
-          cp NonGKI_Kernel_Patches/mix2s_evox_a15/wireguard_fixed.patch ./
           cp NonGKI_Kernel_Patches/mix2s_evox_a15/rekernel_fork_fixed.patch ./
 
-          patch -p1 < cmdline_fixed.patch || true
-          patch -p1 < task_mmu_fixed.patch || true
-          patch -p1 < fdinfo_fixed.patch || true
-          patch -p1 < wireguard_fixed.patch || true
           patch -p1 < rekernel_fork_fixed.patch || true
-
-      - name: Updated SUSFS Version
-        if: env.SUSFS_UPDATE == 'true'
-        run: |
-          cd $GITHUB_WORKSPACE/device_kernel/
-
-          # Upgrade 1.5.7
-          cp /tmp/Patches/Patch/susfs_upgrade_to_157.patch ./
-
-          patch -p1 < susfs_upgrade_to_157.patch || true
-
-          # Upgrade 1.5.8
-          if grep -q "CONFIG_KSU" "fs/exec.c"; then
-            cp /tmp/Patches/Patch/susfs_upgrade_to_158_${{ env.KERNEL_VERSION }}.patch ./
-            patch -p1 < susfs_upgrade_to_158_${{ env.KERNEL_VERSION }}.patch || true
-            echo "Detected no-kprobe hook, use no-kprobe patch."
-          elif [[ "${{ env.KERNEL_VERSION }}" == "5.4" ]]; then
-            cp /tmp/Patches/Patch/susfs_upgrade_to_158_5.4_kprobe.patch ./
-            patch -p1 < susfs_upgrade_to_158_5.4_kprobe.patch || true
-            echo "Cannot detected no-kprobe hook in kernel 5.4, use kprobe patch."
-          else
-            echo "kernel version<5.4 cannot use kprobe patch."
-          fi
-          ## Fixed ZYGOTE_ISO error
-          sed -i '/#define CMD_SUSFS_HIDE_SUS_MNTS_FOR_ALL_PROCS 0x55561/a \#define CMD_SUSFS_UMOUNT_FOR_ZYGOTE_ISO_SERVICE 0x55562' include/linux/susfs_def.h
-
-          # Upgrade 1.5.9
-          cp /tmp/Patches/Patch/susfs_upgrade_to_159.patch ./
-
-          patch -p1 < susfs_upgrade_to_159.patch || true
-
-          # Upgrade 1.5.10
-          if grep -q "CONFIG_KSU" "fs/exec.c"; then
-            cp /tmp/Patches/Patch/susfs_upgrade_to_1510_${{ env.KERNEL_VERSION }}.patch ./
-            patch -p1 < susfs_upgrade_to_1510_${{ env.KERNEL_VERSION }}.patch || true
-            echo "Detected no-kprobe hook, use no-kprobe patch to update 1.5.10."
-          elif [[ "${{ env.KERNEL_VERSION }}" == "5.4" ]]; then
-            cp /tmp/Patches/Patch/susfs_upgrade_to_1510_5.4_kprobe.patch ./
-            patch -p1 < susfs_upgrade_to_1510_5.4_kprobe.patch || true
-            echo "Cannot detected no-kprobe hook in kernel 5.4, use kprobe patch to update 1.5.10."
-          else
-            echo "kernel version<5.4 cannot use kprobe patch to update 1.5.10."
-          fi
-
-          # Extra SUSFS Patch
-          # cp NonGKI_Kernel_Patches/[patch_folder]/[patch_file].patch ./
-
-          # patch -p1 < [patch_file].patch || true
 
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2

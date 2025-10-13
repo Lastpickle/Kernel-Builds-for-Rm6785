@@ -186,6 +186,7 @@ jobs:
           cd $GITHUB_WORKSPACE/device_kernel
           git clone ${{ env.AK3_SOURCE }} -b ${{ env.AK3_BRANCH }} Anykernel3 --depth=1
           curl -sSL ${{ env.KERNELSU_SOURCE }} | bash -s ${{ env.KERNELSU_BRANCH }}
+          KERNELSU_BRANCH=$(git ls-remote --heads "https://github.com/backslashxx/KernelSU.git" | grep -oE 'refs/heads/[0-9]+\+155$' | sed 's|refs/heads/||' | sort -t+ -k1,1n | tail -1)
           KSU_VERSION=$(cd ${{ env.KERNELSU_NAME }} && expr $(/usr/bin/git rev-list --count HEAD) + 10200)
           echo "UPLOADNAME=-${{ env.KERNELSU_NAME }}_$KSU_VERSION" >> $GITHUB_ENV
 
@@ -333,6 +334,15 @@ jobs:
             echo "Cannot detected no-kprobe hook in kernel 5.4, use kprobe patch to update 1.5.10."
           else
             echo "kernel version<5.4 cannot use kprobe patch to update 1.5.10."
+          fi
+
+          # Upgrade 1.5.11
+          if grep -q "susfs_reorder_mnt_id" "drivers/kernelsu/core_hook.c"; then
+            cp /tmp/Patches/Patch/susfs_upgrade_to_1511_${{ env.KERNEL_VERSION }}.patch ./
+            patch -p1 < susfs_upgrade_to_1511_${{ env.KERNEL_VERSION }}.patch || true
+            echo "Detected no-kprobe hook, use no-kprobe patch to update 1.5.11"
+          else
+            echo "Your kernelsu fork cannot supported SuSFS 1.5.11. Skipped."
           fi
 
           # Extra SUSFS Patch
